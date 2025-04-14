@@ -1,33 +1,39 @@
-name: Open PR to main when PR is merged into release branch
+name: Open PR to main when merged into release
 
 on:
   pull_request:
     types: [closed]
+    branches:
+      - release/**
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  create-pr:
-    if: |
-      github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.base.ref, 'release/')
+  open-pr-to-main:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract source branch name
-        id: extract
-        run: |
-          SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
-          echo "source_branch=$SOURCE_BRANCH" >> $GITHUB_OUTPUT
-
-      - name: Create PR to main from source branch
-        uses: repo-sync/pull-request@v2
+      - name: Create PR to main
+        uses: actions/github-script@v7
         with:
-          github_token: ${{ secrets.MY_PAT }}
-          source_branch: ${{ steps.extract.outputs.source_branch }}
-          destination_branch: main
-          pr_title: '🔀 Merge `${{ steps.extract.outputs.source_branch }}` into main'
-          pr_body: |
-            This PR was automatically created because `${{ steps.extract.outputs.source_branch }}` was merged into a release branch.
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.MY_PAT }}
+          script: |
+            const sourceBranch = context.payload.pull_request.head.ref;
+            const originalTitle = context.payload.pull_request.title;
+            const newTitle = `${originalTitle} on the main`;
+
+            const response = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: newTitle,
+              head: sourceBranch,
+              base: "main",
+              body: `Automated PR from \`${sourceBranch}\` to \`main\``
+            });
+
+            console.log("✅ PR created:", response.data.html_url);
