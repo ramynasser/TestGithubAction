@@ -1,18 +1,18 @@
-name: Merge release into main when fix is merged
+name: Merge release fixes into main after production release
 
 on:
   pull_request:
     types: [closed]
     branches:
-      - release/**
+      - production
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  merge-release-to-main:
-    if: github.event.pull_request.merged == true
+  sync-release-to-main:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
     runs-on: ubuntu-latest
 
     steps:
@@ -21,21 +21,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up git
+      - name: Set up Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Merge release into main and create PR
+      - name: Sync release branch into main
         env:
           GITHUB_TOKEN: ${{ secrets.MY_PAT }}
         run: |
-          RELEASE_BRANCH="${GITHUB_REF#refs/heads/}"
-          MAIN_BRANCH="main"
-          TEMP_BRANCH="merge-${RELEASE_BRANCH}-to-main"
+          RELEASE_BRANCH="${{ github.event.pull_request.head.ref }}"
+          TEMP_BRANCH="merge-${RELEASE_BRANCH//\//-}-to-main"
 
-          git checkout $MAIN_BRANCH
-          git pull origin $MAIN_BRANCH
+          git checkout main
+          git pull origin main
 
           git checkout -b $TEMP_BRANCH
           git merge origin/$RELEASE_BRANCH --no-ff -m "Merge $RELEASE_BRANCH into main"
@@ -44,6 +43,6 @@ jobs:
 
           gh pr create \
             --title "Merge $RELEASE_BRANCH into main" \
-            --body "Auto-merge of release branch \`$RELEASE_BRANCH\` into \`main\` after fix merged." \
-            --base "$MAIN_BRANCH" \
-            --head "$TEMP_BRANCH"
+            --body "Merging release fixes from \`$RELEASE_BRANCH\` into \`main\` after production release." \
+            --base main \
+            --head $TEMP_BRANCH
