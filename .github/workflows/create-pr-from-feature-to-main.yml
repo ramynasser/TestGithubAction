@@ -1,4 +1,4 @@
-name: Open PR to main when merged into release
+name: Merge release into main when fix is merged
 
 on:
   pull_request:
@@ -11,55 +11,39 @@ permissions:
   pull-requests: write
 
 jobs:
-  cherry-pick-to-main:
+  merge-release-to-main:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # fetch full history so cherry-pick works
+          fetch-depth: 0
 
-      - name: Set up Git user
+      - name: Set up git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Cherry-pick and create PR
+      - name: Merge release into main and create PR
         env:
           GITHUB_TOKEN: ${{ secrets.MY_PAT }}
         run: |
-          SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
-          TARGET_BRANCH="main"
-          NEW_BRANCH="cp-${SOURCE_BRANCH}-to-main"
+          RELEASE_BRANCH="${GITHUB_REF#refs/heads/}"
+          MAIN_BRANCH="main"
+          TEMP_BRANCH="merge-${RELEASE_BRANCH}-to-main"
 
-          echo "✅ Source branch: $SOURCE_BRANCH"
-          echo "✅ Creating new branch: $NEW_BRANCH"
+          git checkout $MAIN_BRANCH
+          git pull origin $MAIN_BRANCH
 
-          # Checkout main and create a new branch from it
-          git checkout $TARGET_BRANCH
-          git pull origin $TARGET_BRANCH
-          git checkout -b $NEW_BRANCH
+          git checkout -b $TEMP_BRANCH
+          git merge origin/$RELEASE_BRANCH --no-ff -m "Merge $RELEASE_BRANCH into main"
 
-          # Get the list of commits in the merged PR
-          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-          COMMITS=$(gh pr view $PR_NUMBER --json commits -q ".commits[].oid")
+          git push origin $TEMP_BRANCH
 
-          echo "✅ Cherry-picking commits:"
-          for COMMIT in $COMMITS; do
-            echo "Cherry-picking $COMMIT"
-            git cherry-pick $COMMIT || exit 1
-          done
-
-          git push origin $NEW_BRANCH
-
-          # Get the title of the original PR
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          NEW_TITLE="${PR_TITLE} on the main"
-
-          # Create the pull request
-          gh pr create --title "$NEW_TITLE" \
-                       --body "Cherry-picked from \`$SOURCE_BRANCH\` to \`main\`" \
-                       --base "$TARGET_BRANCH" \
-                       --head "$NEW_BRANCH"
+          gh pr create \
+            --title "Merge $RELEASE_BRANCH into main" \
+            --body "Auto-merge of release branch \`$RELEASE_BRANCH\` into \`main\` after fix merged." \
+            --base "$MAIN_BRANCH" \
+            --head "$TEMP_BRANCH"
