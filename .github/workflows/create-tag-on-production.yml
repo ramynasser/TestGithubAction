@@ -1,0 +1,36 @@
+name: Create Release Tag
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  create_tag:
+    name: Create Tag from Constants.swift Version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Needed to push tags
+
+      - name: 🧪 Extract version from Constants.swift
+        id: get_version
+        run: |
+          VERSION=$(grep 'appVersion' Tuist/Constants.swift | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+          if [[ -z "$VERSION" ]]; then
+            echo "❌ Could not find version."
+            exit 1
+          fi
+          TAG="v$VERSION"
+          echo "✅ Found version: $VERSION"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: 🏷 Create Git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.get_version.outputs.tag }}" -m "Release ${{ steps.get_version.outputs.tag }}"
+          git push origin "${{ steps.get_version.outputs.tag }}"
