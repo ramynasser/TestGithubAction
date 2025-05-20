@@ -1,4 +1,4 @@
 enum Constants {
-  static let appVersion = "1.2.3"
+  static let appVersion = "1.3.0"
 }
 
