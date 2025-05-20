@@ -28,4 +28,4 @@ jobs:
           GH_PAT: ${{ secrets.MY_PAT }}
         run: |
           git tag -a "v$VERSION" -m "Release v$VERSION"
-          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }} "v$VERSION"
+          git push
