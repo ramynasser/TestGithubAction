@@ -20,7 +20,7 @@ jobs:
       - name: Extract version from Constants.swift
         id: extract_version
         run: |
-          VERSION=$(grep -oE 'appVersion\s*=\s*"[0-9]+\.[0-9]+\.[0-9]+"' Tuist/ProjectDescriptionHelpers/Constants.swift | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          VERSION=$(grep -oE 'appVersion\s*=\s*"[0-9]+\.[0-9]+\.[0-9]+"' Tuist/Constants.swift | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Create Tag
