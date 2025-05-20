@@ -1,4 +1,4 @@
-name: Create Release Tag
+name: Tag and Release
 
 on:
   push:
@@ -6,26 +6,31 @@ on:
       - production
 
 jobs:
-  create-tag:
+  tag_and_release:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set up Git
+      - name: Set up GitHub CLI
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          sudo apt update
+          sudo apt install gh -y
 
-      - name: Extract version from Constants.swift
+      - name: Authenticate GitHub CLI using default token
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Extract Version from Constants.swift
         id: extract_version
         run: |
-          VERSION=$(grep -oE 'appVersion\s*=\s*"[0-9]+\.[0-9]+\.[0-9]+"' Tuist/Constants.swift | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          VERSION=$(grep 'appVersion' Tuist/Constants.swift | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Version extracted: $VERSION"
 
-      - name: Create Tag
-        env:
-          GH_PAT: ${{ secrets.MY_PAT }}
+      - name: Create GitHub Release and Tag using gh
         run: |
-          git tag -a "v$VERSION" -m "Release v$VERSION"
-          git push
+          gh release create "v$VERSION" \
+            --title "Release v$VERSION" \
+            --notes "Automated release for version v$VERSION"
