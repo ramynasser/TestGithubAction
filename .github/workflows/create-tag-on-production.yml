@@ -20,7 +20,7 @@ jobs:
 
       - name: Authenticate GitHub CLI using default token
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+          echo "${{ secrets.MY_PAT  }}" | gh auth login --with-token
 
       - name: Extract Version from Constants.swift
         id: extract_version
